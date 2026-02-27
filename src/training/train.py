@@ -5,17 +5,22 @@ from src.model.gpt2 import generate_text_simple
 
 
 def text2token_ids(text, tokenizer):
+    """ 将文本转换为 token 编号列表 """
     encoded = tokenizer.encode(text, allowed_special={'<|endoftext|>'})
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)
     return encoded_tensor
 
 
 def token_ids2text(token_ids, tokenizer):
+    """ 将 token 编号列表转换为文本 """
+
+    # (1, seq_len) -> (seq_len,)
     flat = token_ids.squeeze(0)
     return tokenizer.decode(flat.tolist())
 
 
 def calc_loss_batch(input_batch, target_batch, model, device):
+    """ 计算单个批量损失 """
     input_batch, target_batch = input_batch.to(device), target_batch.to(device)
     logits = model(input_batch)
     loss = F.cross_entropy(logits.flatten(0, 1), target_batch.flatten())
@@ -23,6 +28,7 @@ def calc_loss_batch(input_batch, target_batch, model, device):
 
 
 def calc_loss_loader(data_loader, model, device, num_batches=None):
+    """ 计算模型在整个数据集的平均损失 """
     total_loss = 0.
     if len(data_loader) == 0:
         return float("nan")
@@ -40,6 +46,7 @@ def calc_loss_loader(data_loader, model, device, num_batches=None):
 
 
 def evaluate_model(model, train_loader, val_loader, device, eval_iter):
+    """ 评估模型在训练集和验证集的损失 """
     model.eval()
     with torch.no_grad():
         train_loss = calc_loss_loader(train_loader, model, device, num_batches=eval_iter)
@@ -74,20 +81,23 @@ def train_model_simple(
     start_context,
     tokenizer
 ):
+    """ 训练模型 """
+
+    # 初始化损失列表和已见 token 数量
     train_losses, val_losses, track_tokens_seen = [], [], []
     tokens_seen, global_step = 0, -1
 
     for epoch in range(num_epochs):
         model.train()
-
         for input_batch, target_batch in train_loader:
             optimizer.zero_grad()
-            loss = calc_loss_batch(input_batch, target_batch, model, device)
-            loss.backward()
-            optimizer.step()
-            tokens_seen = input_batch.numel()
-            global_step += 1
+            loss = calc_loss_batch(input_batch, target_batch, model, device)  # 计算损失
+            loss.backward()  # 反向传播
+            optimizer.step()  # 更新参数
+            tokens_seen = input_batch.numel()  # 计算已见 token 数量
+            global_step += 1  # 更新全局步数
 
+            # 每 eval_freq 步评估模型
             if global_step % eval_freq == 0:
                 train_loss, val_loss = evaluate_model(
                     model, train_loader, val_loader, device, eval_iter

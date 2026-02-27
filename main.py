@@ -76,7 +76,7 @@ total_tokens = len(tokenizer.encode(text_data))
 print("Characters:", total_characters)
 print("Tokens:", total_tokens)
 
-# Sanity check
+# 检查数据集是否足够
 if total_tokens * TRAIN_RATIO < GPT_CONFIG_124M["context_length"]:
     print("Not enough tokens for the training loader. "
           "Try to lower the `GPT_CONFIG_124M['context_length']` or "

@@ -4,6 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class GPTDatasetV1(Dataset):
+    """ 用于预训练的数据集类 """
 
     def __init__(self, txt: str, tokenizer, max_length, stride) -> None:
         self.input_ids = []
@@ -38,6 +39,8 @@ def create_dataloader_v1(
     drop_last=True,
     num_workers=0
 ):
+    """ 创建数据加载器 """
+
     tokenizer = tiktoken.get_encoding("gpt2")
 
     dataset = GPTDatasetV1(txt, tokenizer, max_length, stride)

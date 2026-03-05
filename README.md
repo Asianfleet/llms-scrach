@@ -1,6 +1,6 @@
 # LLMs from Scratch - GPT2 预训练
 
-从零实现 GPT2 预训练，用于学习大语言模型的核心组件与训练流程。
+从零实现 GPT2 预训练，用于学习大语言模型的核心组件与训练流程。代码主要来自 [Build a Large Language Model (From Scratch)](https://amzn.to/4fqvn0D) 一书。
 
 ## 项目结构
 

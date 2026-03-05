@@ -58,9 +58,7 @@ class CasualAttention(nn.Module):
 
 
 class MultiheadAttention(nn.Module):
-    """ 
-    多头注意力机制实现
-    """
+    """ 多头注意力机制实现 """
 
     def __init__(self, d_in, d_out, num_heads, context_length, dropout, qkv_bias=False):
         super().__init__()

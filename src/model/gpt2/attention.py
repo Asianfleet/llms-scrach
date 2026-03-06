@@ -1,60 +1,8 @@
+"""
+GPT-2 注意力机制实现
+"""
 import torch
 import torch.nn as nn
-
-
-class SelfAttention(nn.Module):
-    def __init__(self, d_in, d_out, qkv_bias=False):
-        super().__init__()
-        self.W_q = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_k = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_v = nn.Linear(d_in, d_out, bias=qkv_bias)
-
-    def forward(self, x):
-        # 支持 (Batch, context_length, Dim)
-        Q = self.W_q(x)
-        K = self.W_k(x)
-        V = self.W_v(x)
-
-        # 使用 transpose 处理批次数据的转置
-        attn_scores = torch.matmul(Q, K.transpose(-2, -1))
-
-        # 缩放因子计算
-        d_k = K.size(-1)
-        attn_weights = torch.softmax(attn_scores / (d_k ** 0.5), dim=-1)
-
-        return torch.matmul(attn_weights, V)
-
-
-class CasualAttention(nn.Module):
-    def __init__(self, d_in, d_out, context_length, dropout, qkv_bias=False):
-        super().__init__()
-
-        self.d_out = d_out
-        self.W_q = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_k = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_v = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.dropout = nn.Dropout(dropout)
-        self.register_buffer(
-            "mask",
-            torch.triu(torch.ones(context_length, context_length), diagonal=1)
-        )
-
-    def forward(self, x):
-        b, context_length, d_in = x.shape
-
-        Q = self.W_q(x)
-        K = self.W_k(x)
-        V = self.W_v(x)
-
-        attn_scores = torch.matmul(Q, K.transpose(-2, -1))
-        attn_scores.masked_fill_(
-            self.mask.bool()[:context_length, :context_length], -torch.inf
-        )
-        d_k = K.size(-1)
-        attn_weights = torch.softmax(attn_scores / (d_k ** 0.5), dim=-1)
-        attn_weights = self.dropout(attn_weights)
-
-        return torch.matmul(attn_weights, V)
 
 
 class MultiheadAttention(nn.Module):
@@ -87,8 +35,7 @@ class MultiheadAttention(nn.Module):
         K = self.W_k(x)
         V = self.W_v(x)
 
-        # 将 Query, Key, Value 分割成多个头（num_heads 个头，每个头包含 head_dim 个维度）
-        # 这里没有一次性完成
+        # 将 Query, Key, Value 分割成多个头
         Q = Q.view(b, seq_len, self.num_heads, self.head_dim)
         K = K.view(b, seq_len, self.num_heads, self.head_dim)
         V = V.view(b, seq_len, self.num_heads, self.head_dim)
@@ -101,8 +48,7 @@ class MultiheadAttention(nn.Module):
 
         d_k = K.size(-1)    # 用于计算缩放因子
         attn_scores = torch.matmul(Q, K.transpose(-2, -1))
-        # 添加因果掩码, 确保当前位置的注意力只能关注到前面的位置
-        # 值为 True 的位置会被填充为 -inf
+        # 添加因果掩码
         attn_scores.masked_fill_(
             self.mask.bool()[:seq_len, :seq_len], -torch.inf
         )

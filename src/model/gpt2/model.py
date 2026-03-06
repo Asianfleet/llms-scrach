@@ -1,11 +1,17 @@
+"""
+GPT-2 模型实现
+"""
 import math
 import torch
 import torch.nn as nn
 
-from src.model.attention import MultiheadAttention
+from src.model.base import BaseLanguageModel
+from src.model.gpt2.attention import MultiheadAttention
 
 
 class GELU(nn.Module):
+    """GELU 激活函数"""
+
     def __init__(self):
         super().__init__()
 
@@ -17,6 +23,8 @@ class GELU(nn.Module):
 
 
 class LayerNorm(nn.Module):
+    """层归一化"""
+
     def __init__(self, emb_dim) -> None:
         super().__init__()
         self.eps = 1e-5
@@ -31,6 +39,8 @@ class LayerNorm(nn.Module):
 
 
 class FeedForward(nn.Module):
+    """前馈网络"""
+
     def __init__(self, cfg) -> None:
         super().__init__()
         self.layers = nn.Sequential(
@@ -44,6 +54,8 @@ class FeedForward(nn.Module):
 
 
 class TransformerBlock(nn.Module):
+    """Transformer 块"""
+
     def __init__(self, cfg) -> None:
         super().__init__()
 
@@ -76,9 +88,11 @@ class TransformerBlock(nn.Module):
         return x
 
 
-class GPT2(nn.Module):
+class GPT2(BaseLanguageModel):
+    """GPT-2 语言模型"""
+
     def __init__(self, cfg) -> None:
-        super().__init__()
+        super().__init__(cfg)
 
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
@@ -104,9 +118,17 @@ class GPT2(nn.Module):
 
 
 def generate_text_simple(model, idx, max_new_tokens, context_size):
-    # shape of idx: (batch, seq_len)
+    """
+    简单的文本生成函数
+    Args:
+        model: 语言模型
+        idx: 输入 token IDs，形状为 (batch, seq_len)
+        max_new_tokens: 最大生成 token 数
+        context_size: 上下文窗口大小
+    Returns:
+        生成的 token IDs
+    """
     for _ in range(max_new_tokens):
-
         # 防止超出模型上下文窗口
         idx_context = idx[:, -context_size:]
 
@@ -127,44 +149,45 @@ def generate_text_simple(model, idx, max_new_tokens, context_size):
 
     return idx
 
-def generate(model, idx, max_new_tokens, context_size, temperature=0.0, top_k=None, eos_id=None):
 
-    # For-loop is the same as before: Get logits, and only focus on last time step
+def generate(model, idx, max_new_tokens, context_size, temperature=0.0, top_k=None, eos_id=None):
+    """
+    高级文本生成函数，支持 temperature 和 top-k 采样
+    Args:
+        model: 语言模型
+        idx: 输入 token IDs
+        max_new_tokens: 最大生成 token 数
+        context_size: 上下文窗口大小
+        temperature: 温度参数，0表示贪婪解码
+        top_k: top-k 采样参数
+        eos_id: 结束符 ID，遇到则停止生成
+    Returns:
+        生成的 token IDs
+    """
     for _ in range(max_new_tokens):
         idx_cond = idx[:, -context_size:]
         with torch.no_grad():
             logits = model(idx_cond)
         logits = logits[:, -1, :]
 
-        # New: Filter logits with top_k sampling
+        # 应用 top-k 过滤
         if top_k is not None:
-            # Keep only top_k values
             top_logits, _ = torch.topk(logits, top_k)
             min_val = top_logits[:, -1]
             logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
 
-        # New: Apply temperature scaling
+        # 应用温度缩放
         if temperature > 0.0:
             logits = logits / temperature
-
-            # New (not in book): numerical stability tip to get equivalent results on mps device
-            # subtract rowwise max before softmax
             logits = logits - logits.max(dim=-1, keepdim=True).values
-
-            # Apply softmax to get probabilities
-            probs = torch.softmax(logits, dim=-1)  # (batch_size, context_len)
-
-            # Sample from the distribution
-            idx_next = torch.multinomial(probs, num_samples=1)  # (batch_size, 1)
-
-        # Otherwise same as before: get idx of the vocab entry with the highest logits value
+            probs = torch.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probs, num_samples=1)
         else:
-            idx_next = torch.argmax(logits, dim=-1, keepdim=True)  # (batch_size, 1)
+            idx_next = torch.argmax(logits, dim=-1, keepdim=True)
 
-        if idx_next == eos_id:  # Stop generating early if end-of-sequence token is encountered and eos_id is specified
+        if idx_next == eos_id:
             break
 
-        # Same as before: append sampled index to the running sequence
-        idx = torch.cat((idx, idx_next), dim=1)  # (batch_size, num_tokens+1)
+        idx = torch.cat((idx, idx_next), dim=1)
 
     return idx

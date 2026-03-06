@@ -1,16 +1,23 @@
-"""LLMs from scratch - GPT2 预训练项目"""
+"""
+LLMs-from-scratch 项目
+支持多种模型架构的预训练和微调
+"""
+from src.config import (
+    build_config,
+    list_available_models,
+    get_model_info,
+    GPT_CONFIG_124M,
+    GPT2_MODEL_CONFIGS,
+    QWEN3_MODEL_CONFIGS,
+)
 
-from src.config import GPT_CONFIG_124M
-from src.data import GPTDatasetV1, create_dataloader_v1
-from src.model import GPT2, generate_text_simple
-from src.training import train_model_simple, evaluate_model
+__version__ = "0.2.0"
 
 __all__ = [
+    "build_config",
+    "list_available_models",
+    "get_model_info",
     "GPT_CONFIG_124M",
-    "GPTDatasetV1",
-    "create_dataloader_v1",
-    "GPT2",
-    "generate_text_simple",
-    "train_model_simple",
-    "evaluate_model",
+    "GPT2_MODEL_CONFIGS",
+    "QWEN3_MODEL_CONFIGS",
 ]
